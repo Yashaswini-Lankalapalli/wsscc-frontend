@@ -57,6 +57,23 @@ const DashboardPage = () => {
   const fileInputRef = useRef();
   const webcamRef = useRef(null);
   const [uploadedImage, setUploadedImage] = useState(null);
+  const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [audioChunks, setAudioChunks] = useState([]);
+  const [recordedAudio, setRecordedAudio] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [uploadedAudio, setUploadedAudio] = useState(null);
+  const audioInputRef = useRef();
+  const [storeImage, setStoreImage] = useState(null);
+  const storeImageInputRef = useRef();
+  const dummyStoreDetails = {
+    storeName: "Walmart Central",
+    storeId: "WMT1001",
+    managerName: "John Doe",
+    storeLocation: "Brooklyn, NY",
+    phoneNumber: "+1-555-123-4567",
+  };
 
   useEffect(() => {
     if (cameraDialogOpen && videoRef.current) {
@@ -83,6 +100,47 @@ const DashboardPage = () => {
     canvas.height = videoRef.current.videoHeight;
     canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
     setCapturedImage(canvas.toDataURL('image/png'));
+  };
+
+  const handleStartRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new window.MediaRecorder(stream);
+      setMediaRecorder(recorder);
+      setAudioChunks([]);
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) setAudioChunks((prev) => [...prev, e.data]);
+      };
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        setRecordedAudio(URL.createObjectURL(audioBlob));
+        stream.getTracks().forEach(track => track.stop());
+      };
+      recorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      alert('Could not access microphone.');
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorder) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const handlePauseRecording = () => {
+    if (mediaRecorder && isRecording && !isPaused) {
+      mediaRecorder.pause();
+      setIsPaused(true);
+    }
+  };
+  const handleResumeRecording = () => {
+    if (mediaRecorder && isRecording && isPaused) {
+      mediaRecorder.resume();
+      setIsPaused(false);
+    }
   };
 
   return (
@@ -130,14 +188,47 @@ const DashboardPage = () => {
               <div>Welcome to the Home section of the dashboard.</div>
             </div>
           )}
-          {selected === 1 && <div>Store Map and Details content goes here.</div>}
+          {selected === 1 && (
+            <Box>
+              <Typography variant="h5" gutterBottom>Store Map and Details</Typography>
+              <Button variant="contained" color="primary" onClick={() => storeImageInputRef.current.click()} sx={{ mb: 2 }}>
+                Upload Store Map
+              </Button>
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                ref={storeImageInputRef}
+                onChange={e => {
+                  if (e.target.files && e.target.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = ev => setStoreImage(ev.target.result);
+                    reader.readAsDataURL(e.target.files[0]);
+                  }
+                }}
+              />
+              {storeImage && (
+                <Box mb={2}>
+                  <Typography variant="subtitle1">Uploaded Store Image:</Typography>
+                  <img src={storeImage} alt="Store" style={{ maxWidth: 300, maxHeight: 200 }} />
+                </Box>
+              )}
+              <Paper sx={{ p: 2, maxWidth: 400 }}>
+                <Typography><b>Store Name:</b> {dummyStoreDetails.storeName}</Typography>
+                <Typography><b>Store ID:</b> {dummyStoreDetails.storeId}</Typography>
+                <Typography><b>Manager Name:</b> {dummyStoreDetails.managerName}</Typography>
+                <Typography><b>Store Location:</b> {dummyStoreDetails.storeLocation}</Typography>
+                <Typography><b>Phone Number:</b> {dummyStoreDetails.phoneNumber}</Typography>
+              </Paper>
+            </Box>
+          )}
           {selected === 2 && (
             <Box>
               <Typography variant="h5" gutterBottom>Feedback</Typography>
               <Button variant="contained" color="primary" sx={{ mr: 2 }} onClick={() => setCameraDialogOpen(true)}>
                 Capture Image
               </Button>
-              <Button variant="contained" color="secondary" sx={{ mr: 2 }}>
+              <Button variant="contained" color="secondary" sx={{ mr: 2 }} onClick={() => setVoiceDialogOpen(true)}>
                 Capture Voice
               </Button>
               <Dialog open={cameraDialogOpen} onClose={() => { setCameraDialogOpen(false); setCapturedImage(null); }} maxWidth="sm" fullWidth>
@@ -206,10 +297,77 @@ const DashboardPage = () => {
                   <Button onClick={() => { setCameraDialogOpen(false); setCapturedImage(null); }}>Close</Button>
                 </DialogActions>
               </Dialog>
+              <Dialog open={voiceDialogOpen} onClose={() => { setVoiceDialogOpen(false); setRecordedAudio(null); setIsRecording(false); setIsPaused(false); }} maxWidth="sm" fullWidth>
+                <DialogTitle>Capture Voice</DialogTitle>
+                <DialogContent>
+                  {recordedAudio ? (
+                    <audio controls src={recordedAudio} style={{ width: '100%' }} />
+                  ) : (
+                    <Typography variant="body1" align="center" sx={{ mt: 2, mb: 2 }}>
+                      {isRecording ? (isPaused ? 'Recording paused.' : 'Recording... Speak now.') : 'Click start to record your voice.'}
+                    </Typography>
+                  )}
+                </DialogContent>
+                <DialogActions sx={{ flexDirection: 'row', gap: 1, px: 3, pb: 2, justifyContent: 'center' }}>
+                  {!recordedAudio ? (
+                    <>
+                      <Button variant="contained" color="primary" onClick={handleStartRecording} disabled={isRecording} size="small">
+                        Start Recording
+                      </Button>
+                      <Button variant="contained" color="warning" onClick={handleStopRecording} disabled={!isRecording} size="small">
+                        Stop Recording
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color={isPaused ? "success" : "info"}
+                        onClick={isPaused ? handleResumeRecording : handlePauseRecording}
+                        disabled={!isRecording}
+                        size="small"
+                        sx={{ minWidth: 120 }}
+                      >
+                        {isPaused ? 'Resume' : 'Pause'}
+                      </Button>
+                      <Button variant="contained" color="secondary" onClick={() => audioInputRef.current.click()} size="small">
+                        Upload from Device
+                      </Button>
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        style={{ display: "none" }}
+                        ref={audioInputRef}
+                        onChange={e => {
+                          if (e.target.files && e.target.files[0]) {
+                            setRecordedAudio(URL.createObjectURL(e.target.files[0]));
+                          }
+                        }}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="contained" color="success" onClick={() => {
+                        setUploadedAudio(recordedAudio);
+                        setVoiceDialogOpen(false);
+                        setRecordedAudio(null);
+                        setIsRecording(false);
+                        setIsPaused(false);
+                      }} size="small">
+                        Upload
+                      </Button>
+                    </>
+                  )}
+                  <Button onClick={() => { setVoiceDialogOpen(false); setRecordedAudio(null); setIsRecording(false); setIsPaused(false); }} size="small">Close</Button>
+                </DialogActions>
+              </Dialog>
               {uploadedImage && (
                 <Box mt={2}>
                   <Typography variant="subtitle1">Uploaded Image:</Typography>
                   <img src={uploadedImage} alt="Uploaded" style={{ maxWidth: 300, maxHeight: 200 }} />
+                </Box>
+              )}
+              {uploadedAudio && (
+                <Box mt={2}>
+                  <Typography variant="subtitle1">Uploaded Audio:</Typography>
+                  <audio controls src={uploadedAudio} style={{ width: 300 }} />
                 </Box>
               )}
             </Box>

@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { Box, Drawer, List, ListItem, ListItemButton, ListItemText, Toolbar, AppBar, Typography, TextField, Button, Paper } from "@mui/material";
+import React, { useState, useRef, useEffect } from "react";
+import { Box, Drawer, List, ListItem, ListItemButton, ListItemText, Toolbar, AppBar, Typography, TextField, Button, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import Webcam from "react-webcam";
 
 const drawerWidth = 240;
 
@@ -48,6 +49,41 @@ const DashboardPage = () => {
     storeLocation: "",
     phoneNumber: "",
   });
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [cameraDialogOpen, setCameraDialogOpen] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
+  const videoRef = useRef();
+  const [capturedImage, setCapturedImage] = useState(null);
+  const fileInputRef = useRef();
+  const webcamRef = useRef(null);
+  const [uploadedImage, setUploadedImage] = useState(null);
+
+  useEffect(() => {
+    if (cameraDialogOpen && videoRef.current) {
+      navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+          videoRef.current.srcObject = stream;
+          setCameraStream(stream);
+        })
+        .catch(err => {
+          // Handle error
+        });
+    }
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        setCameraStream(null);
+      }
+    };
+  }, [cameraDialogOpen]);
+
+  const handleCapture = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
+    setCapturedImage(canvas.toDataURL('image/png'));
+  };
 
   return (
     <Box sx={{ display: "flex" }}>
@@ -95,7 +131,89 @@ const DashboardPage = () => {
             </div>
           )}
           {selected === 1 && <div>Store Map and Details content goes here.</div>}
-          {selected === 2 && <div>Feedback content goes here.</div>}
+          {selected === 2 && (
+            <Box>
+              <Typography variant="h5" gutterBottom>Feedback</Typography>
+              <Button variant="contained" color="primary" sx={{ mr: 2 }} onClick={() => setCameraDialogOpen(true)}>
+                Capture Image
+              </Button>
+              <Button variant="contained" color="secondary" sx={{ mr: 2 }}>
+                Capture Voice
+              </Button>
+              <Dialog open={cameraDialogOpen} onClose={() => { setCameraDialogOpen(false); setCapturedImage(null); }} maxWidth="sm" fullWidth>
+                <DialogTitle>Capture Image</DialogTitle>
+                <DialogContent>
+                  {!capturedImage ? (
+                    <Box display="flex" flexDirection="column" alignItems="center">
+                      <Webcam
+                        audio={false}
+                        ref={webcamRef}
+                        screenshotFormat="image/png"
+                        width={400}
+                        height={300}
+                        videoConstraints={{ facingMode: "environment" }}
+                        style={{ width: '100%', maxHeight: 300, background: '#000' }}
+                      />
+                    </Box>
+                  ) : (
+                    <Box display="flex" flexDirection="column" alignItems="center">
+                      <img src={capturedImage} alt="Captured" style={{ width: '100%', maxHeight: 300 }} />
+                    </Box>
+                  )}
+                </DialogContent>
+                <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
+                  {!capturedImage ? (
+                    <>
+                      <Button variant="contained" color="primary" onClick={() => {
+                        if (webcamRef.current) {
+                          const imageSrc = webcamRef.current.getScreenshot();
+                          setCapturedImage(imageSrc);
+                        }
+                      }}>
+                        Capture
+                      </Button>
+                      <Button variant="contained" color="secondary" onClick={() => fileInputRef.current.click()}>
+                        Upload from Gallery
+                      </Button>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        ref={fileInputRef}
+                        onChange={e => {
+                          if (e.target.files && e.target.files[0]) {
+                            const reader = new FileReader();
+                            reader.onload = ev => setCapturedImage(ev.target.result);
+                            reader.readAsDataURL(e.target.files[0]);
+                          }
+                        }}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Button variant="outlined" color="primary" onClick={() => setCapturedImage(null)}>
+                        Retake Image
+                      </Button>
+                      <Button variant="contained" color="success" onClick={() => {
+                        setUploadedImage(capturedImage);
+                        setCameraDialogOpen(false);
+                        setCapturedImage(null);
+                      }}>
+                        Upload
+                      </Button>
+                    </>
+                  )}
+                  <Button onClick={() => { setCameraDialogOpen(false); setCapturedImage(null); }}>Close</Button>
+                </DialogActions>
+              </Dialog>
+              {uploadedImage && (
+                <Box mt={2}>
+                  <Typography variant="subtitle1">Uploaded Image:</Typography>
+                  <img src={uploadedImage} alt="Uploaded" style={{ maxWidth: 300, maxHeight: 200 }} />
+                </Box>
+              )}
+            </Box>
+          )}
           {selected === 3 && <div>Current Problems content goes here.</div>}
           {selected === 4 && <div>Camera Details content goes here.</div>}
           {selected === 5 && (
@@ -110,19 +228,30 @@ const DashboardPage = () => {
                   <Typography><b>Phone Number:</b> {store.phoneNumber}</Typography>
                 </Paper>
               ))}
-              <Box component="form" onSubmit={e => {
-                e.preventDefault();
-                setNearbyStores([...nearbyStores, newStore]);
-                setNewStore({ storeName: "", storeId: "", managerName: "", storeLocation: "", phoneNumber: "" });
-              }} sx={{ mt: 3 }}>
-                <Typography variant="h6" gutterBottom>Add New Store</Typography>
-                <TextField label="Store Name" name="storeName" value={newStore.storeName} onChange={e => setNewStore({ ...newStore, storeName: e.target.value })} fullWidth margin="normal" required />
-                <TextField label="Store ID" name="storeId" value={newStore.storeId} onChange={e => setNewStore({ ...newStore, storeId: e.target.value })} fullWidth margin="normal" required />
-                <TextField label="Manager Name" name="managerName" value={newStore.managerName} onChange={e => setNewStore({ ...newStore, managerName: e.target.value })} fullWidth margin="normal" required />
-                <TextField label="Store Location" name="storeLocation" value={newStore.storeLocation} onChange={e => setNewStore({ ...newStore, storeLocation: e.target.value })} fullWidth margin="normal" required />
-                <TextField label="Phone Number" name="phoneNumber" value={newStore.phoneNumber} onChange={e => setNewStore({ ...newStore, phoneNumber: e.target.value })} fullWidth margin="normal" required />
-                <Button type="submit" variant="contained" color="primary" sx={{ mt: 2 }}>Add Store</Button>
-              </Box>
+              <Button variant="contained" color="primary" onClick={() => setAddDialogOpen(true)}>
+                Add Store
+              </Button>
+              <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)}>
+                <DialogTitle>Add New Store</DialogTitle>
+                <DialogContent>
+                  <Box component="form" id="add-store-form" sx={{ mt: 1 }}>
+                    <TextField label="Store Name" name="storeName" value={newStore.storeName} onChange={e => setNewStore({ ...newStore, storeName: e.target.value })} fullWidth margin="normal" required />
+                    <TextField label="Store ID" name="storeId" value={newStore.storeId} onChange={e => setNewStore({ ...newStore, storeId: e.target.value })} fullWidth margin="normal" required />
+                    <TextField label="Manager Name" name="managerName" value={newStore.managerName} onChange={e => setNewStore({ ...newStore, managerName: e.target.value })} fullWidth margin="normal" required />
+                    <TextField label="Store Location" name="storeLocation" value={newStore.storeLocation} onChange={e => setNewStore({ ...newStore, storeLocation: e.target.value })} fullWidth margin="normal" required />
+                    <TextField label="Phone Number" name="phoneNumber" value={newStore.phoneNumber} onChange={e => setNewStore({ ...newStore, phoneNumber: e.target.value })} fullWidth margin="normal" required />
+                  </Box>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => setAddDialogOpen(false)}>Cancel</Button>
+                  <Button type="submit" form="add-store-form" variant="contained" onClick={e => {
+                    e.preventDefault();
+                    setNearbyStores([...nearbyStores, newStore]);
+                    setNewStore({ storeName: "", storeId: "", managerName: "", storeLocation: "", phoneNumber: "" });
+                    setAddDialogOpen(false);
+                  }}>Add Store</Button>
+                </DialogActions>
+              </Dialog>
             </Box>
           )}
           {selected === 6 && (

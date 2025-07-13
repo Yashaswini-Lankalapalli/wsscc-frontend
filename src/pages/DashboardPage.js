@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Box, Drawer, List, ListItem, ListItemButton, ListItemText, Toolbar, AppBar, Typography, TextField, Button, Paper, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import Webcam from "react-webcam";
+import CameraCapture from '../components/Scanner/CameraCapture';
+import VoiceInput from '../components/Scanner/VoiceInput';
 
 const drawerWidth = 240;
 
@@ -51,20 +53,18 @@ const DashboardPage = () => {
   });
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [cameraDialogOpen, setCameraDialogOpen] = useState(false);
+  const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [uploadedAudio, setUploadedAudio] = useState(null);
   const [cameraStream, setCameraStream] = useState(null);
   const videoRef = useRef();
   const [capturedImage, setCapturedImage] = useState(null);
   const fileInputRef = useRef();
   const webcamRef = useRef(null);
-  const [uploadedImage, setUploadedImage] = useState(null);
-  const [voiceDialogOpen, setVoiceDialogOpen] = useState(false);
-  const [mediaRecorder, setMediaRecorder] = useState(null);
-  const [audioChunks, setAudioChunks] = useState([]);
   const [recordedAudio, setRecordedAudio] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [uploadedAudio, setUploadedAudio] = useState(null);
-  const audioInputRef = useRef();
+  const [audioChunks, setAudioChunks] = useState([]);
   const [storeImage, setStoreImage] = useState(null);
   const storeImageInputRef = useRef();
   const dummyStoreDetails = {
@@ -231,133 +231,16 @@ const DashboardPage = () => {
               <Button variant="contained" color="secondary" sx={{ mr: 2 }} onClick={() => setVoiceDialogOpen(true)}>
                 Capture Voice
               </Button>
-              <Dialog open={cameraDialogOpen} onClose={() => { setCameraDialogOpen(false); setCapturedImage(null); }} maxWidth="sm" fullWidth>
-                <DialogTitle>Capture Image</DialogTitle>
-                <DialogContent>
-                  {!capturedImage ? (
-                    <Box display="flex" flexDirection="column" alignItems="center">
-                      <Webcam
-                        audio={false}
-                        ref={webcamRef}
-                        screenshotFormat="image/png"
-                        width={400}
-                        height={300}
-                        videoConstraints={{ facingMode: "environment" }}
-                        style={{ width: '100%', maxHeight: 300, background: '#000' }}
-                      />
-                    </Box>
-                  ) : (
-                    <Box display="flex" flexDirection="column" alignItems="center">
-                      <img src={capturedImage} alt="Captured" style={{ width: '100%', maxHeight: 300 }} />
-                    </Box>
-                  )}
-                </DialogContent>
-                <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
-                  {!capturedImage ? (
-                    <>
-                      <Button variant="contained" color="primary" onClick={() => {
-                        if (webcamRef.current) {
-                          const imageSrc = webcamRef.current.getScreenshot();
-                          setCapturedImage(imageSrc);
-                        }
-                      }}>
-                        Capture
-                      </Button>
-                      <Button variant="contained" color="secondary" onClick={() => fileInputRef.current.click()}>
-                        Upload from Gallery
-                      </Button>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        style={{ display: "none" }}
-                        ref={fileInputRef}
-                        onChange={e => {
-                          if (e.target.files && e.target.files[0]) {
-                            const reader = new FileReader();
-                            reader.onload = ev => setCapturedImage(ev.target.result);
-                            reader.readAsDataURL(e.target.files[0]);
-                          }
-                        }}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <Button variant="outlined" color="primary" onClick={() => setCapturedImage(null)}>
-                        Retake Image
-                      </Button>
-                      <Button variant="contained" color="success" onClick={() => {
-                        setUploadedImage(capturedImage);
-                        setCameraDialogOpen(false);
-                        setCapturedImage(null);
-                      }}>
-                        Upload
-                      </Button>
-                    </>
-                  )}
-                  <Button onClick={() => { setCameraDialogOpen(false); setCapturedImage(null); }}>Close</Button>
-                </DialogActions>
-              </Dialog>
-              <Dialog open={voiceDialogOpen} onClose={() => { setVoiceDialogOpen(false); setRecordedAudio(null); setIsRecording(false); setIsPaused(false); }} maxWidth="sm" fullWidth>
-                <DialogTitle>Capture Voice</DialogTitle>
-                <DialogContent>
-                  {recordedAudio ? (
-                    <audio controls src={recordedAudio} style={{ width: '100%' }} />
-                  ) : (
-                    <Typography variant="body1" align="center" sx={{ mt: 2, mb: 2 }}>
-                      {isRecording ? (isPaused ? 'Recording paused.' : 'Recording... Speak now.') : 'Click start to record your voice.'}
-                    </Typography>
-                  )}
-                </DialogContent>
-                <DialogActions sx={{ flexDirection: 'row', gap: 1, px: 3, pb: 2, justifyContent: 'center' }}>
-                  {!recordedAudio ? (
-                    <>
-                      <Button variant="contained" color="primary" onClick={handleStartRecording} disabled={isRecording} size="small">
-                        Start Recording
-                      </Button>
-                      <Button variant="contained" color="warning" onClick={handleStopRecording} disabled={!isRecording} size="small">
-                        Stop Recording
-                      </Button>
-                      <Button
-                        variant="contained"
-                        color={isPaused ? "success" : "info"}
-                        onClick={isPaused ? handleResumeRecording : handlePauseRecording}
-                        disabled={!isRecording}
-                        size="small"
-                        sx={{ minWidth: 120 }}
-                      >
-                        {isPaused ? 'Resume' : 'Pause'}
-                      </Button>
-                      <Button variant="contained" color="secondary" onClick={() => audioInputRef.current.click()} size="small">
-                        Upload from Device
-                      </Button>
-                      <input
-                        type="file"
-                        accept="audio/*"
-                        style={{ display: "none" }}
-                        ref={audioInputRef}
-                        onChange={e => {
-                          if (e.target.files && e.target.files[0]) {
-                            setRecordedAudio(URL.createObjectURL(e.target.files[0]));
-                          }
-                        }}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <Button variant="contained" color="success" onClick={() => {
-                        setUploadedAudio(recordedAudio);
-                        setVoiceDialogOpen(false);
-                        setRecordedAudio(null);
-                        setIsRecording(false);
-                        setIsPaused(false);
-                      }} size="small">
-                        Upload
-                      </Button>
-                    </>
-                  )}
-                  <Button onClick={() => { setVoiceDialogOpen(false); setRecordedAudio(null); setIsRecording(false); setIsPaused(false); }} size="small">Close</Button>
-                </DialogActions>
-              </Dialog>
+              <CameraCapture
+                open={cameraDialogOpen}
+                onClose={() => setCameraDialogOpen(false)}
+                onUpload={img => setUploadedImage(img)}
+              />
+              <VoiceInput
+                open={voiceDialogOpen}
+                onClose={() => setVoiceDialogOpen(false)}
+                onUpload={audio => setUploadedAudio(audio)}
+              />
               {uploadedImage && (
                 <Box mt={2}>
                   <Typography variant="subtitle1">Uploaded Image:</Typography>
@@ -377,6 +260,9 @@ const DashboardPage = () => {
           {selected === 5 && (
             <Box>
               <Typography variant="h5" gutterBottom>Nearby Stores</Typography>
+              <Button variant="contained" color="primary" onClick={() => setAddDialogOpen(true)} sx={{ mb: 2 }}>
+                Add Store
+              </Button>
               {nearbyStores.map((store, idx) => (
                 <Paper key={idx} sx={{ p: 2, mb: 2 }}>
                   <Typography><b>Store Name:</b> {store.storeName}</Typography>
@@ -386,9 +272,6 @@ const DashboardPage = () => {
                   <Typography><b>Phone Number:</b> {store.phoneNumber}</Typography>
                 </Paper>
               ))}
-              <Button variant="contained" color="primary" onClick={() => setAddDialogOpen(true)}>
-                Add Store
-              </Button>
               <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)}>
                 <DialogTitle>Add New Store</DialogTitle>
                 <DialogContent>

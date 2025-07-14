@@ -210,11 +210,11 @@ const DashboardPage = () => {
         <Toolbar />
         <Box sx={{ overflow: "auto" }}>
           <List>
-            {sectionRoutes.map((section, index) => (
+            {sectionRoutes.map((section) => (
               <ListItem key={section.label} disablePadding>
                 <ListItemButton
-                  selected={location.pathname === `/dashboard/${section.path}` || (section.path === '' && location.pathname === '/dashboard')}
-                  onClick={() => navigate(`/dashboard/${section.path}`)}
+                  selected={section.path === '' ? location.pathname === '/dashboard' : location.pathname === `/dashboard/${section.path}`}
+                  onClick={() => navigate(`/dashboard${section.path ? `/${section.path}` : ''}`)}
                 >
                   <ListItemText primary={section.label} />
                 </ListItemButton>
@@ -225,10 +225,6 @@ const DashboardPage = () => {
       </Drawer>
       <Box component="main" sx={{ flexGrow: 1, bgcolor: "#f5f5f5", p: 3, minHeight: "100vh" }}>
         <Toolbar />
-        <Typography variant="h4" gutterBottom>
-          {sections[selected]}
-        </Typography>
-        {/* Placeholder for section content */}
         <Routes>
           <Route path="" element={<Home />} />
           <Route path="store-map" element={<StoreMapAndDetails />} />
@@ -244,4 +240,4 @@ const DashboardPage = () => {
   );
 };
 
-export default DashboardPage; 
+export default DashboardPage;

@@ -3,6 +3,15 @@ import { Box, Drawer, List, ListItem, ListItemButton, ListItemText, Toolbar, App
 import Webcam from "react-webcam";
 import CameraCapture from '../components/Scanner/CameraCapture';
 import VoiceInput from '../components/Scanner/VoiceInput';
+import Home from '../components/Dashboard/Home';
+import StoreMapAndDetails from '../components/Dashboard/StoreMapAndDetails';
+import Feedback from '../components/Dashboard/Feedback';
+import CurrentProblems from '../components/Dashboard/CurrentProblems';
+import CameraDetails from '../components/Dashboard/CameraDetails';
+import NearbyStores from '../components/Dashboard/NearbyStores';
+import Notifications from '../components/Dashboard/Notifications';
+import Profile from '../components/Dashboard/Profile';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
 const drawerWidth = 240;
 
@@ -13,7 +22,8 @@ const sections = [
   "Current Problems",
   "Camera Details",
   "Nearby Stores",
-  "Profile"
+  "Notifications",
+  "Profile",
 ];
 
 const dummyProfile = {
@@ -74,6 +84,22 @@ const DashboardPage = () => {
     storeLocation: "Brooklyn, NY",
     phoneNumber: "+1-555-123-4567",
   };
+  const [notifyDialogOpen, setNotifyDialogOpen] = useState(false);
+  const [problemText, setProblemText] = useState("");
+
+  const sectionRoutes = [
+    { label: 'Home', path: '' },
+    { label: 'Store Map and Details', path: 'store-map' },
+    { label: 'Feedback', path: 'feedback' },
+    { label: 'Current Problems', path: 'current-problems' },
+    { label: 'Camera Details', path: 'camera-details' },
+    { label: 'Nearby Stores', path: 'nearby-stores' },
+    { label: 'Notifications', path: 'notifications' },
+    { label: 'Profile', path: 'profile' },
+  ];
+
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (cameraDialogOpen && videoRef.current) {
@@ -147,9 +173,30 @@ const DashboardPage = () => {
     <Box sx={{ display: "flex" }}>
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar>
-          <Typography variant="h6" noWrap component="div">
-            Manager Dashboard
-          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Box
+              sx={{
+                background: '#fff',
+                borderRadius: '10px',
+                p: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                boxShadow: 1
+              }}
+            >
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/e/e2/Walmart_logo_%282025%3B_Stacked_alt%29.svg"
+                alt="Walmart Logo"
+                style={{ height: 40, background: '#fff' }}
+              />
+            </Box>
+            <Typography variant="h5" component="span" sx={{ fontWeight: 'bold', mr: 1 }}>
+              Walmart
+            </Typography>
+            <Typography variant="h6" component="span" sx={{ color: 'inherit', opacity: 0.8 }}>
+              • Manager Dashboard
+            </Typography>
+          </Box>
         </Toolbar>
       </AppBar>
       <Drawer
@@ -163,10 +210,13 @@ const DashboardPage = () => {
         <Toolbar />
         <Box sx={{ overflow: "auto" }}>
           <List>
-            {sections.map((text, index) => (
-              <ListItem key={text} disablePadding>
-                <ListItemButton selected={selected === index} onClick={() => setSelected(index)}>
-                  <ListItemText primary={text} />
+            {sectionRoutes.map((section, index) => (
+              <ListItem key={section.label} disablePadding>
+                <ListItemButton
+                  selected={location.pathname === `/dashboard/${section.path}` || (section.path === '' && location.pathname === '/dashboard')}
+                  onClick={() => navigate(`/dashboard/${section.path}`)}
+                >
+                  <ListItemText primary={section.label} />
                 </ListItemButton>
               </ListItem>
             ))}
@@ -179,132 +229,16 @@ const DashboardPage = () => {
           {sections[selected]}
         </Typography>
         {/* Placeholder for section content */}
-        <Box>
-          {selected === 0 && (
-            <div>
-              <Typography variant="h5" gutterBottom>
-                Welcome, {managerName}!
-              </Typography>
-              <div>Welcome to the Home section of the dashboard.</div>
-            </div>
-          )}
-          {selected === 1 && (
-            <Box>
-              <Typography variant="h5" gutterBottom>Store Map and Details</Typography>
-              <Button variant="contained" color="primary" onClick={() => storeImageInputRef.current.click()} sx={{ mb: 2 }}>
-                Upload Store Map
-              </Button>
-              <input
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                ref={storeImageInputRef}
-                onChange={e => {
-                  if (e.target.files && e.target.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = ev => setStoreImage(ev.target.result);
-                    reader.readAsDataURL(e.target.files[0]);
-                  }
-                }}
-              />
-              {storeImage && (
-                <Box mb={2}>
-                  <Typography variant="subtitle1">Uploaded Store Image:</Typography>
-                  <img src={storeImage} alt="Store" style={{ maxWidth: 300, maxHeight: 200 }} />
-                </Box>
-              )}
-              <Paper sx={{ p: 2, maxWidth: 400 }}>
-                <Typography><b>Store Name:</b> {dummyStoreDetails.storeName}</Typography>
-                <Typography><b>Store ID:</b> {dummyStoreDetails.storeId}</Typography>
-                <Typography><b>Manager Name:</b> {dummyStoreDetails.managerName}</Typography>
-                <Typography><b>Store Location:</b> {dummyStoreDetails.storeLocation}</Typography>
-                <Typography><b>Phone Number:</b> {dummyStoreDetails.phoneNumber}</Typography>
-              </Paper>
-            </Box>
-          )}
-          {selected === 2 && (
-            <Box>
-              <Typography variant="h5" gutterBottom>Feedback</Typography>
-              <Button variant="contained" color="primary" sx={{ mr: 2 }} onClick={() => setCameraDialogOpen(true)}>
-                Capture Image
-              </Button>
-              <Button variant="contained" color="secondary" sx={{ mr: 2 }} onClick={() => setVoiceDialogOpen(true)}>
-                Capture Voice
-              </Button>
-              <CameraCapture
-                open={cameraDialogOpen}
-                onClose={() => setCameraDialogOpen(false)}
-                onUpload={img => setUploadedImage(img)}
-              />
-              <VoiceInput
-                open={voiceDialogOpen}
-                onClose={() => setVoiceDialogOpen(false)}
-                onUpload={audio => setUploadedAudio(audio)}
-              />
-              {uploadedImage && (
-                <Box mt={2}>
-                  <Typography variant="subtitle1">Uploaded Image:</Typography>
-                  <img src={uploadedImage} alt="Uploaded" style={{ maxWidth: 300, maxHeight: 200 }} />
-                </Box>
-              )}
-              {uploadedAudio && (
-                <Box mt={2}>
-                  <Typography variant="subtitle1">Uploaded Audio:</Typography>
-                  <audio controls src={uploadedAudio} style={{ width: 300 }} />
-                </Box>
-              )}
-            </Box>
-          )}
-          {selected === 3 && <div>Current Problems content goes here.</div>}
-          {selected === 4 && <div>Camera Details content goes here.</div>}
-          {selected === 5 && (
-            <Box>
-              <Typography variant="h5" gutterBottom>Nearby Stores</Typography>
-              <Button variant="contained" color="primary" onClick={() => setAddDialogOpen(true)} sx={{ mb: 2 }}>
-                Add Store
-              </Button>
-              {nearbyStores.map((store, idx) => (
-                <Paper key={idx} sx={{ p: 2, mb: 2 }}>
-                  <Typography><b>Store Name:</b> {store.storeName}</Typography>
-                  <Typography><b>Store ID:</b> {store.storeId}</Typography>
-                  <Typography><b>Manager Name:</b> {store.managerName}</Typography>
-                  <Typography><b>Store Location:</b> {store.storeLocation}</Typography>
-                  <Typography><b>Phone Number:</b> {store.phoneNumber}</Typography>
-                </Paper>
-              ))}
-              <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)}>
-                <DialogTitle>Add New Store</DialogTitle>
-                <DialogContent>
-                  <Box component="form" id="add-store-form" sx={{ mt: 1 }}>
-                    <TextField label="Store Name" name="storeName" value={newStore.storeName} onChange={e => setNewStore({ ...newStore, storeName: e.target.value })} fullWidth margin="normal" required />
-                    <TextField label="Store ID" name="storeId" value={newStore.storeId} onChange={e => setNewStore({ ...newStore, storeId: e.target.value })} fullWidth margin="normal" required />
-                    <TextField label="Manager Name" name="managerName" value={newStore.managerName} onChange={e => setNewStore({ ...newStore, managerName: e.target.value })} fullWidth margin="normal" required />
-                    <TextField label="Store Location" name="storeLocation" value={newStore.storeLocation} onChange={e => setNewStore({ ...newStore, storeLocation: e.target.value })} fullWidth margin="normal" required />
-                    <TextField label="Phone Number" name="phoneNumber" value={newStore.phoneNumber} onChange={e => setNewStore({ ...newStore, phoneNumber: e.target.value })} fullWidth margin="normal" required />
-                  </Box>
-                </DialogContent>
-                <DialogActions>
-                  <Button onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-                  <Button type="submit" form="add-store-form" variant="contained" onClick={e => {
-                    e.preventDefault();
-                    setNearbyStores([...nearbyStores, newStore]);
-                    setNewStore({ storeName: "", storeId: "", managerName: "", storeLocation: "", phoneNumber: "" });
-                    setAddDialogOpen(false);
-                  }}>Add Store</Button>
-                </DialogActions>
-              </Dialog>
-            </Box>
-          )}
-          {selected === 6 && (
-            <Box>
-              <Typography variant="h5" gutterBottom>Profile</Typography>
-              <Typography><b>Manager Name:</b> {dummyProfile.managerName}</Typography>
-              <Typography><b>Store ID:</b> {dummyProfile.storeId}</Typography>
-              <Typography><b>Store Location:</b> {dummyProfile.storeLocation}</Typography>
-              <Typography><b>Phone Number:</b> {dummyProfile.phoneNumber}</Typography>
-            </Box>
-          )}
-        </Box>
+        <Routes>
+          <Route path="" element={<Home />} />
+          <Route path="store-map" element={<StoreMapAndDetails />} />
+          <Route path="feedback" element={<Feedback />} />
+          <Route path="current-problems" element={<CurrentProblems />} />
+          <Route path="camera-details" element={<CameraDetails />} />
+          <Route path="nearby-stores" element={<NearbyStores />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="profile" element={<Profile />} />
+        </Routes>
       </Box>
     </Box>
   );

@@ -6,6 +6,7 @@ const RegisterPage = () => {
   const [form, setForm] = useState({
     managerName: "",
     password: "",
+    storeName: "",
     storeId: "",
     storeLocation: "",
     phoneNumber: "",
@@ -30,6 +31,7 @@ const RegisterPage = () => {
         <form onSubmit={handleSubmit}>
           <TextField label="Manager Name" name="managerName" value={form.managerName} onChange={handleChange} fullWidth margin="normal" required />
           <TextField label="Password" name="password" type="password" value={form.password} onChange={handleChange} fullWidth margin="normal" required />
+          <TextField label="Store Name" name="storeName" value={form.storeName} onChange={handleChange} fullWidth margin="normal" required />
           <TextField label="Store ID" name="storeId" value={form.storeId} onChange={handleChange} fullWidth margin="normal" required />
           <TextField label="Store Location" name="storeLocation" value={form.storeLocation} onChange={handleChange} fullWidth margin="normal" required />
           <TextField label="Phone Number" name="phoneNumber" value={form.phoneNumber} onChange={handleChange} fullWidth margin="normal" required />
